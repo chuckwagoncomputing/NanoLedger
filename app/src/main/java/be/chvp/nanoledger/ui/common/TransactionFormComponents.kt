@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -47,7 +48,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -263,11 +266,32 @@ fun NoteSelector(
 ) {
     val note by viewModel.note.observeAsState()
     val options by viewModel.possibleNotes.observeAsState()
+    var textFieldValueState by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = note ?: "",
+            ),
+        )
+    }
     OutlinedLooseDropdown(
         options ?: emptyList(),
-        note ?: "",
-        { viewModel.setNote(it) },
+        textFieldValueState,
+        {
+            val str: String
+            if (note?.contains(",") ?: false && !it.contains(",")) {
+                str = note?.substringBeforeLast(",") + ", " + it
+            } else {
+                str = it
+            }
+            textFieldValueState =
+                TextFieldValue(
+                    text = str,
+                    selection = TextRange(str.length),
+                )
+            viewModel.setNote(str)
+        },
         modifier,
+        unexpandOnClick = false,
     ) { Text(stringResource(R.string.note)) }
 }
 
@@ -381,6 +405,28 @@ fun OutlinedLooseDropdown(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    unexpandOnClick: Boolean = true,
+    content: (@Composable () -> Unit)? = null,
+) {
+    OutlinedLooseDropdown(
+        options,
+        TextFieldValue(
+            value,
+        ),
+        onValueChange,
+        modifier,
+        unexpandOnClick,
+        content,
+    )
+}
+
+@Composable
+fun OutlinedLooseDropdown(
+    options: List<String>,
+    value: TextFieldValue,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    unexpandOnClick: Boolean = true,
     content: (@Composable () -> Unit)? = null,
 ) {
     val focusManager = LocalFocusManager.current
@@ -393,10 +439,10 @@ fun OutlinedLooseDropdown(
         OutlinedTextField(
             value = value,
             onValueChange = {
-                if (it.length > value.length) {
+                if (it.text.length > value.text.length) {
                     expanded = true
                 }
-                onValueChange(it)
+                onValueChange(it.text)
             },
             singleLine = true,
             label = content,
@@ -412,7 +458,7 @@ fun OutlinedLooseDropdown(
                     unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                 ),
         )
-        if (shouldShowDropdown(options, value)) {
+        if (shouldShowDropdown(options, value.text)) {
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
@@ -423,8 +469,10 @@ fun OutlinedLooseDropdown(
                         text = { Text(it) },
                         onClick = {
                             onValueChange(it)
-                            focusManager.clearFocus()
-                            expanded = false
+                            if (unexpandOnClick) {
+                                focusManager.clearFocus()
+                                expanded = false
+                            }
                         },
                         contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                     )

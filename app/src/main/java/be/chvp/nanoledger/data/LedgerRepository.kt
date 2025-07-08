@@ -12,6 +12,7 @@ import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.text.trim
 
 @Singleton
 class LedgerRepository
@@ -34,7 +35,7 @@ class LedgerRepository
         val notes: LiveData<Set<String>> =
             transactions.map {
                 HashSet(
-                    it.map { it.note }.filter { it != null }.map { it!! },
+                    it.map { it.note }.filterNotNull().flatMap { it.split(",") }.map { it.trim() }.filter { it != "" },
                 )
             }
 
