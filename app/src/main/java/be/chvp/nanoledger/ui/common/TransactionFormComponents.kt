@@ -38,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -47,7 +48,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -263,7 +266,7 @@ fun NoteSelector(
 ) {
     val note by viewModel.note.observeAsState()
     val options by viewModel.possibleNotes.observeAsState()
-    OutlinedLooseDropdown(
+    AppendingOutlinedLooseDropdown(
         options ?: emptyList(),
         note ?: "",
         { viewModel.setNote(it) },
@@ -373,6 +376,83 @@ fun AccountSelector(
     val options by viewModel.accounts.observeAsState()
     val filteredOptions = options?.filter { it.contains(value, ignoreCase = true) } ?: emptyList()
     LooseDropdown(filteredOptions, value, { viewModel.setAccount(index, it) }, modifier)
+}
+
+@Composable
+fun AppendingOutlinedLooseDropdown(
+    options: List<String>,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    content: (@Composable () -> Unit)? = null,
+) {
+    val focusManager = LocalFocusManager.current
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    var textFieldValueState by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = value,
+            ),
+        )
+    }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = modifier,
+    ) {
+        OutlinedTextField(
+            value = textFieldValueState,
+            onValueChange = {
+                if (it.text.length > value.length) {
+                    expanded = true
+                }
+                onValueChange(it.text)
+                textFieldValueState = it
+            },
+            singleLine = true,
+            label = content,
+            modifier =
+                Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth().onFocusChanged {
+                    if (!it.hasFocus) {
+                        expanded = false
+                    }
+                },
+            colors =
+                ExposedDropdownMenuDefaults.textFieldColors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                ),
+        )
+        if (shouldShowDropdown(options, value)) {
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.exposedDropdownSize(true),
+            ) {
+                options.forEach {
+                    DropdownMenuItem(
+                        text = { Text(it) },
+                        onClick = {
+                            val str: String
+                            if (value.contains(",")) {
+                                str = value.substringBeforeLast(",") + ", " + it
+                            } else {
+                                str = it
+                            }
+                            onValueChange(str)
+                            textFieldValueState =
+                                TextFieldValue(
+                                    text = str,
+                                    selection = TextRange(str.length),
+                                )
+                            expanded = false
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable

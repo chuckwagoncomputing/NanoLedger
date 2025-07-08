@@ -59,7 +59,7 @@ abstract class TransactionFormViewModel
         val possibleNotes: LiveData<List<String>> =
             ledgerRepository.notes.switchMap { notes ->
                 note.map { search ->
-                    notes.filter { it.contains(search, ignoreCase = true) }.sorted()
+                    notes.filter { it.contains(search.substringAfterLast(",").trim(), ignoreCase = true) }.sorted()
                 }
             }
 
