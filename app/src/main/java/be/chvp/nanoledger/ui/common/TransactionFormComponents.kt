@@ -370,8 +370,10 @@ fun AccountSelector(
     viewModel: TransactionFormViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val options by viewModel.accounts.observeAsState()
-    val filteredOptions = options?.filter { it.contains(value, ignoreCase = true) } ?: emptyList()
+    val options = viewModel.accounts.observeAsState().value as? List<String> ?: emptyList()
+    val lastAccounts = viewModel.lastAccounts.observeAsState().value as? List<String> ?: emptyList()
+    val allOptions: List<String> = lastAccounts + options
+    val filteredOptions = allOptions?.filter { it.contains(value, ignoreCase = true) }?.distinct() ?: emptyList()
     LooseDropdown(filteredOptions, value, { viewModel.setAccount(index, it) }, modifier)
 }
 
