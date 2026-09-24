@@ -73,7 +73,9 @@ abstract class TransactionFormViewModel(
             ledgerRepository.payees.switchMap { payees ->
                 payee.switchMap { payee ->
                     val listToSearch: Set<String> = if (payee == null) notes + payees else notes
-                    note.map { search -> listToSearch.filter { it.contains((search ?: ""), ignoreCase = true) }.sorted() }
+                    note.map { search ->
+                        listToSearch.filter { it.contains((search?.substringAfterLast(",")?.trim() ?: ""), ignoreCase = true) }.sorted()
+                    }
                 }
             }
         }

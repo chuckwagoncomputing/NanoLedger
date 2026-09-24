@@ -39,7 +39,12 @@ class LedgerRepository
         val notes: LiveData<Set<String>> =
             transactions.map { txs ->
                 HashSet(
-                    txs.map { tx -> tx.note }.filter { note -> note != null }.map { note -> note!! },
+                    txs
+                        .map { tx -> tx.note }
+                        .filterNotNull()
+                        .flatMap { it.split(",") }
+                        .map { it.trim() }
+                        .filter { it != "" },
                 )
             }
 
